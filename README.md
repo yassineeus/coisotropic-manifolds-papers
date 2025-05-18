@@ -1008,8 +1008,7 @@ Last update: 2025-05-18 00:50:42
 | 2025-02-18 | Robert Schippa | Square function estimates for cones over quadratic manifolds | [arXiv:2502.13275v1](http://arxiv.org/abs/2502.13275v1) |
 | 2025-02-18 | Adrien Aumon, Shuang Ni, Myriam Lizotte, Guy Wolf, Kevin R. Moon, Jake S. Rhodes | Random Forest Autoencoders for Guided Representation Learning | [arXiv:2502.13257v2](http://arxiv.org/abs/2502.13257v2) |
 
-## À propos
+About
+This table is automatically generated using a Python script that queries the arXiv API. The source code is available in this repository.
 
-Ce tableau est généré automatiquement à l'aide d'un script Python qui interroge l'API arXiv. Le code source est disponible dans ce dépôt.
-
-Pour suggérer des améliorations ou signaler des problèmes, veuillez ouvrir une issue.
+To suggest improvements or report issues, please open an issue.
