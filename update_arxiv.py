@@ -33,7 +33,11 @@ CATEGORIES = [
     'math.QA'   # Quantum Algebra
 ]
 
-MAX_RESULTS_PER_QUERY = 200  # Nombre maximum d'articles par requête
+# Définir la plage de dates (depuis 1975)
+START_DATE = "1975-01-01"
+END_DATE = datetime.datetime.now().strftime("%Y-%m-%d")  # Aujourd'hui
+
+MAX_RESULTS_PER_QUERY = 500  # Augmentation du nombre maximum d'articles par requête
 RESULTS_FILE = "coisotropic_manifolds_database.csv"  # Fichier de stockage
 README_FILE = "README.md"  # Fichier de présentation
 CONFIG_FILE = "config.yaml"  # Fichier de configuration
@@ -51,7 +55,9 @@ def load_or_create_config():
             'search_queries': SEARCH_QUERIES,
             'categories': CATEGORIES,
             'max_results_per_query': MAX_RESULTS_PER_QUERY,
-            'exclude_terms': ['non-coisotropic', 'anti-coisotropic']  # Termes à exclure
+            'exclude_terms': ['non-coisotropic', 'anti-coisotropic'],  # Termes à exclure
+            'start_date': START_DATE,
+            'end_date': END_DATE
         }
         with open(config_path, 'w') as f:
             yaml.dump(config, f)
@@ -63,8 +69,8 @@ def save_config(config):
     with open(CONFIG_FILE, 'w') as f:
         yaml.dump(config, f)
 
-def build_query(terms, categories, exclude_terms=None):
-    """Construit une requête de recherche arXiv optimisée"""
+def build_query(terms, categories, exclude_terms=None, start_date=None, end_date=None):
+    """Construit une requête de recherche arXiv optimisée avec plage de dates"""
     # Ajouter les catégories avec OU logique
     cat_query = " OR ".join([f"cat:{cat}" for cat in categories])
     
@@ -73,8 +79,17 @@ def build_query(terms, categories, exclude_terms=None):
     if exclude_terms and len(exclude_terms) > 0:
         exclude_query = " AND " + " AND ".join([f"NOT ({term})" for term in exclude_terms])
     
+    # Ajouter la plage de dates
+    date_query = ""
+    if start_date and end_date:
+        date_query = f" AND submittedDate:[{start_date} TO {end_date}]"
+    elif start_date:
+        date_query = f" AND submittedDate:[{start_date} TO *]"
+    elif end_date:
+        date_query = f" AND submittedDate:[* TO {end_date}]"
+    
     # Requête finale
-    query = f"({terms}) AND ({cat_query}){exclude_query}"
+    query = f"({terms}) AND ({cat_query}){exclude_query}{date_query}"
     return query
 
 def fetch_articles(config):
@@ -88,9 +103,19 @@ def fetch_articles(config):
         num_retries=5
     )
     
+    # Obtenir les dates de la configuration
+    start_date = config.get('start_date', START_DATE)
+    end_date = config.get('end_date', END_DATE)
+    
     # Effectuer des recherches pour chaque requête
     for query_term in tqdm(config['search_queries'], desc="Recherche de requêtes"):
-        full_query = build_query(query_term, config['categories'], config['exclude_terms'])
+        full_query = build_query(
+            query_term, 
+            config['categories'], 
+            config['exclude_terms'],
+            start_date,
+            end_date
+        )
         print(f"Recherche avec la requête: {full_query}")
         
         # Configurer la recherche
@@ -139,6 +164,31 @@ def filter_by_relevance(results, config):
     
     print(f"Après filtrage par pertinence: {len(relevant_results)} articles")
     return relevant_results
+
+def filter_by_date(results, start_date=None, end_date=None):
+    """Filtre les résultats par date pour ne garder que ceux dans la plage spécifiée"""
+    if not start_date and not end_date:
+        return results
+    
+    filtered_results = []
+    
+    # Convertir les dates en objets datetime pour la comparaison
+    start_dt = datetime.datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+    end_dt = datetime.datetime.strptime(end_date, "%Y-%m-%d") if end_date else datetime.datetime.now()
+    
+    for result in results:
+        # Obtenir la date de publication
+        pub_date = result.published
+        
+        # Vérifier si la date est dans la plage
+        is_after_start = True if start_dt is None else pub_date >= start_dt
+        is_before_end = True if end_dt is None else pub_date <= end_dt
+        
+        if is_after_start and is_before_end:
+            filtered_results.append(result)
+    
+    print(f"Après filtrage par date ({start_date} à {end_date}): {len(filtered_results)} articles")
+    return filtered_results
 
 def extract_article_info(result):
     """Extrait les informations détaillées d'un article arXiv"""
@@ -199,15 +249,16 @@ def generate_readme(df, config):
     # En-tête du fichier
     current_time = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     
-    header = f"""# Collection d'articles sur les Variétés Coisotropes
+    header = f"""# Collection d'articles sur les Variétés Coisotropes (1975-{datetime.datetime.now().year})
 
 Dernière mise à jour: {current_time}
 
-Ce dépôt contient une collection d'articles scientifiques sur les variétés coisotropes et sujets connexes, collectés automatiquement depuis arXiv.
+Ce dépôt contient une collection d'articles scientifiques sur les variétés coisotropes et sujets connexes, collectés automatiquement depuis arXiv, couvrant la période de 1975 à aujourd'hui.
 
 ## Statistiques
 
 - Nombre total d'articles: {len(df)}
+- Période couverte: {config.get('start_date', START_DATE)} à {config.get('end_date', END_DATE)}
 - Termes de recherche: {', '.join([f'`{q}`' for q in config['search_queries']])}
 - Catégories arXiv ciblées: {', '.join([f'`{c}`' for c in config['categories']])}
 
@@ -251,18 +302,33 @@ Ce dépôt contient une collection d'articles scientifiques sur les variétés c
         row_str = f"| {date} | {authors} | {title} | [arXiv:{article_id}]({url}) |"
         all_rows.append(row_str)
     
+    # Ajouter une section pour les statistiques par décennie
+    decades_stats = """
+## Statistiques par décennie
+
+| Décennie | Nombre d'articles |
+|----------|-------------------|
+"""
+    # Calculer le nombre d'articles par décennie
+    df['decade'] = df['published_date'].apply(lambda x: str(int(x[:4]) // 10 * 10) + 's')
+    decade_counts = df['decade'].value_counts().sort_index()
+    decade_rows = []
+    for decade, count in decade_counts.items():
+        decade_rows.append(f"| {decade} | {count} |")
+    
     # Pied de page
     footer = f"""
 
 ## À propos
 
-Ce tableau est généré automatiquement à l'aide d'un script Python qui interroge l'API arXiv. Le code source est disponible dans ce dépôt.
+Ce tableau est généré automatiquement à l'aide d'un script Python qui interroge l'API arXiv pour récupérer des articles publiés depuis 1975. Le code source est disponible dans ce dépôt.
 
 Pour suggérer des améliorations ou signaler des problèmes, veuillez ouvrir une issue.
 
 ## Configuration
 
 Le script utilise les paramètres suivants:
+- Période: {config.get('start_date', START_DATE)} à {config.get('end_date', END_DATE)}
 - Recherches: {', '.join(config['search_queries'])}
 - Catégories: {', '.join(config['categories'])}
 - Termes exclus: {', '.join(config['exclude_terms'])}
@@ -271,7 +337,8 @@ Le script utilise les paramètres suivants:
     
     # Combiner et écrire le fichier README
     with open(README_FILE, "w", encoding="utf-8") as f:
-        f.write(header + "\n".join(recent_rows) + all_articles + "\n".join(all_rows) + footer)
+        f.write(header + "\n".join(recent_rows) + all_articles + "\n".join(all_rows) + 
+                decades_stats + "\n".join(decade_rows) + footer)
     
     print(f"Fichier README mis à jour: {README_FILE}")
 
@@ -279,6 +346,7 @@ def main():
     """Fonction principale avec gestion des erreurs et rapport"""
     start_time = datetime.datetime.now()
     print(f"Démarrage de la collection d'articles à {start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+    print(f"Recherche d'articles de {START_DATE} à {END_DATE}")
     
     try:
         # Charger ou créer la configuration
@@ -290,8 +358,15 @@ def main():
         # Filtrer par pertinence
         relevant_results = filter_by_relevance(results, config)
         
+        # Filtrer par date (pour s'assurer que tous les articles sont dans la plage)
+        dated_results = filter_by_date(
+            relevant_results, 
+            config.get('start_date', START_DATE), 
+            config.get('end_date', END_DATE)
+        )
+        
         # Mettre à jour la base de données
-        df = update_database(relevant_results)
+        df = update_database(dated_results)
         
         # Générer le README
         generate_readme(df, config)
@@ -303,6 +378,7 @@ def main():
         end_time = datetime.datetime.now()
         duration = (end_time - start_time).total_seconds() / 60
         print(f"Traitement terminé en {duration:.2f} minutes")
+        print(f"Articles collectés de {START_DATE} à {END_DATE}")
         
     except Exception as e:
         print(f"Erreur lors de l'exécution: {e}")
