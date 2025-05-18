@@ -1,6 +1,8 @@
 # Collection of Articles on Coisotropic submanifolds
+
 Last update: 2025-05-18 00:50:42
-This repository contains a collection of scientific articles on coisotropic submanifolds and related topics, automatically collected from arXiv.
+
+#This repository contains a collection of scientific articles on coisotropic submanifolds and related topics, automatically collected from arXiv.
 
 
 | Date | Auteurs | Titre | Lien |
