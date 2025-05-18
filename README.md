@@ -1,9 +1,6 @@
-# Collection d'articles sur les Variétés Coisotropes
-
-Dernière mise à jour: 2025-05-18 00:50:42
-
-Ce dépôt contient une collection d'articles scientifiques sur les variétés coisotropes et sujets connexes, collectés automatiquement depuis arXiv.
-
+# Collection of Articles on Coisotropic Varieties
+Last update: 2025-05-18 00:50:42
+This repository contains a collection of scientific articles on coisotropic varieties and related topics, automatically collected from arXiv.
 ## Articles (1000 au total)
 
 | Date | Auteurs | Titre | Lien |
