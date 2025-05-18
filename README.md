@@ -1,7 +1,7 @@
-# Collection of Articles on Coisotropic Varieties
+# Collection of Articles on Coisotropic submanifolds
 Last update: 2025-05-18 00:50:42
-This repository contains a collection of scientific articles on coisotropic varieties and related topics, automatically collected from arXiv.
-## Articles (1000 au total)
+This repository contains a collection of scientific articles on coisotropic submanifolds and related topics, automatically collected from arXiv.
+
 
 | Date | Auteurs | Titre | Lien |
 |------|---------|-------|------|
